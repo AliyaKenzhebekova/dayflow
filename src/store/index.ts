@@ -8,11 +8,11 @@ export type HabitFreq = 'daily' | 'weekdays' | 'weekends' | 'custom'
 export interface Habit {
   id: string
   name: string
-  duration: number // minutes
+  duration: number
   time: string
   freq: HabitFreq
-  days?: number[] // 0=Sun..6=Sat for custom
-  completedDates: string[] // ISO date strings "YYYY-MM-DD"
+  days?: number[]
+  completedDates: string[]
 }
 
 export type GoalCategory = 'education' | 'health' | 'finance' | 'personal'
@@ -23,13 +23,13 @@ export interface Goal {
   category: GoalCategory
   daysTotal: number
   startDate: string
-  progress: number // 0–100
+  progress: number
 }
 
 export interface CalendarTask {
   id: string
   title: string
-  date: string // "YYYY-MM-DD"
+  date: string
   time?: string
   category: TaskCategory
   done: boolean
@@ -48,7 +48,7 @@ export interface Reminder {
   id: string
   title: string
   time: string
-  days: string // 'daily' | 'Mon,Wed,Fri' | 'weekday' | ...
+  days: string
   enabled: boolean
   category: TaskCategory
 }
@@ -60,9 +60,25 @@ export interface Achievement {
   icon: string
 }
 
+export type ScheduleType = 'rest' | 'habit' | 'work' | 'kids' | 'family' | 'food' | 'study' | 'goals' | 'personal'
+
+export interface CustomBlock {
+  id: string
+  time: string
+  label: string
+  type: ScheduleType
+  note?: string
+  done: boolean
+  date: string // YYYY-MM-DD (daily plan date)
+}
+
+export interface ScheduleNote {
+  blockKey: string // e.g. "06:40-weekday"
+  note: string
+}
+
 // ── Initial Data ───────────────────────────────────────────────────────────
 
-const TODAY = new Date().toISOString().slice(0, 10)
 const d = (offset: number) => {
   const dt = new Date()
   dt.setDate(dt.getDate() - offset)
@@ -86,11 +102,11 @@ const initGoals: Goal[] = [
 ]
 
 const initCalendarTasks: CalendarTask[] = [
-  { id: 'ct1', title: 'Терапевт', date: TODAY, time: '10:00', category: 'health', done: false },
+  { id: 'ct1', title: 'Терапевт', date: new Date().toISOString().slice(0, 10), time: '10:00', category: 'health', done: false },
   { id: 'ct2', title: 'Общий анализ крови', date: d(-7), time: '09:00', category: 'health', done: false },
   { id: 'ct3', title: 'УЗИ органов', date: d(-14), time: '11:00', category: 'health', done: false },
   { id: 'ct4', title: 'Кардиолог', date: d(-21), time: '14:00', category: 'health', done: false },
-  { id: 'ct5', title: 'День рождения Ани', date: d(-10), time: '', category: 'family', done: false },
+  { id: 'ct5', title: 'День рождения Ани', date: d(-10), category: 'family', done: false },
   { id: 'ct6', title: 'Собрание в школе', date: d(-5), time: '18:00', category: 'kids', done: false },
 ]
 
@@ -139,7 +155,8 @@ interface AppState {
   reminders: Reminder[]
   achievements: Achievement[]
   activeReminder: Reminder | null
-  darkMode: boolean
+  customBlocks: CustomBlock[]
+  scheduleNotes: ScheduleNote[]
 
   // Habits
   toggleHabit: (id: string, date: string) => void
@@ -169,7 +186,13 @@ interface AppState {
   // Achievements
   addAchievement: (title: string, icon: string) => void
 
-  setDarkMode: (v: boolean) => void
+  // Custom day blocks
+  addCustomBlock: (b: Omit<CustomBlock, 'id'>) => void
+  toggleCustomBlock: (id: string) => void
+  deleteCustomBlock: (id: string) => void
+
+  // Schedule notes
+  setScheduleNote: (blockKey: string, note: string) => void
 }
 
 function uid() {
@@ -186,99 +209,64 @@ export const useStore = create<AppState>()(
       reminders: initReminders,
       achievements: initAchievements,
       activeReminder: null,
-      darkMode: false,
+      customBlocks: [],
+      scheduleNotes: [],
 
       toggleHabit: (id, date) =>
         set((s) => ({
           habits: s.habits.map((h) =>
             h.id === id
-              ? {
-                  ...h,
-                  completedDates: h.completedDates.includes(date)
-                    ? h.completedDates.filter((d) => d !== date)
-                    : [...h.completedDates, date],
-                }
+              ? { ...h, completedDates: h.completedDates.includes(date) ? h.completedDates.filter((d) => d !== date) : [...h.completedDates, date] }
               : h
           ),
         })),
 
-      addHabit: (h) =>
-        set((s) => ({
-          habits: [...s.habits, { ...h, id: uid(), completedDates: [] }],
-        })),
-
-      deleteHabit: (id) =>
-        set((s) => ({ habits: s.habits.filter((h) => h.id !== id) })),
+      addHabit: (h) => set((s) => ({ habits: [...s.habits, { ...h, id: uid(), completedDates: [] }] })),
+      deleteHabit: (id) => set((s) => ({ habits: s.habits.filter((h) => h.id !== id) })),
 
       updateGoalProgress: (id, delta) =>
         set((s) => ({
-          goals: s.goals.map((g) =>
-            g.id === id
-              ? { ...g, progress: Math.min(100, Math.max(0, g.progress + delta)) }
-              : g
-          ),
+          goals: s.goals.map((g) => g.id === id ? { ...g, progress: Math.min(100, Math.max(0, g.progress + delta)) } : g),
         })),
 
-      addGoal: (g) =>
-        set((s) => ({ goals: [...s.goals, { ...g, id: uid() }] })),
+      addGoal: (g) => set((s) => ({ goals: [...s.goals, { ...g, id: uid() }] })),
+      deleteGoal: (id) => set((s) => ({ goals: s.goals.filter((g) => g.id !== id) })),
 
-      deleteGoal: (id) =>
-        set((s) => ({ goals: s.goals.filter((g) => g.id !== id) })),
-
-      addCalendarTask: (t) =>
-        set((s) => ({
-          calendarTasks: [...s.calendarTasks, { ...t, id: uid() }],
-        })),
-
+      addCalendarTask: (t) => set((s) => ({ calendarTasks: [...s.calendarTasks, { ...t, id: uid() }] })),
       toggleCalendarTask: (id) =>
-        set((s) => ({
-          calendarTasks: s.calendarTasks.map((t) =>
-            t.id === id ? { ...t, done: !t.done } : t
-          ),
-        })),
-
-      deleteCalendarTask: (id) =>
-        set((s) => ({
-          calendarTasks: s.calendarTasks.filter((t) => t.id !== id),
-        })),
+        set((s) => ({ calendarTasks: s.calendarTasks.map((t) => t.id === id ? { ...t, done: !t.done } : t) })),
+      deleteCalendarTask: (id) => set((s) => ({ calendarTasks: s.calendarTasks.filter((t) => t.id !== id) })),
 
       togglePrepItem: (id) =>
-        set((s) => ({
-          prepItems: s.prepItems.map((p) =>
-            p.id === id ? { ...p, done: !p.done } : p
-          ),
-        })),
-
+        set((s) => ({ prepItems: s.prepItems.map((p) => p.id === id ? { ...p, done: !p.done } : p) })),
       addPrepItem: (name, portions) =>
-        set((s) => ({
-          prepItems: [...s.prepItems, { id: uid(), name, portions, done: false }],
-        })),
-
-      resetPrep: () =>
-        set((s) => ({
-          prepItems: s.prepItems.map((p) => ({ ...p, done: false })),
-        })),
+        set((s) => ({ prepItems: [...s.prepItems, { id: uid(), name, portions, done: false }] })),
+      resetPrep: () => set((s) => ({ prepItems: s.prepItems.map((p) => ({ ...p, done: false })) })),
 
       toggleReminder: (id) =>
-        set((s) => ({
-          reminders: s.reminders.map((r) =>
-            r.id === id ? { ...r, enabled: !r.enabled } : r
-          ),
-        })),
-
+        set((s) => ({ reminders: s.reminders.map((r) => r.id === id ? { ...r, enabled: !r.enabled } : r) })),
       dismissReminder: () => set({ activeReminder: null }),
       triggerReminder: (r) => set({ activeReminder: r }),
 
       addAchievement: (title, icon) =>
         set((s) => ({
-          achievements: [
-            { id: uid(), title, date: new Date().toISOString().slice(0, 10), icon },
-            ...s.achievements,
-          ],
+          achievements: [{ id: uid(), title, date: new Date().toISOString().slice(0, 10), icon }, ...s.achievements],
         })),
 
-      setDarkMode: (v) => set({ darkMode: v }),
+      addCustomBlock: (b) => set((s) => ({ customBlocks: [...s.customBlocks, { ...b, id: uid() }] })),
+      toggleCustomBlock: (id) =>
+        set((s) => ({ customBlocks: s.customBlocks.map((b) => b.id === id ? { ...b, done: !b.done } : b) })),
+      deleteCustomBlock: (id) => set((s) => ({ customBlocks: s.customBlocks.filter((b) => b.id !== id) })),
+
+      setScheduleNote: (blockKey, note) =>
+        set((s) => {
+          const existing = s.scheduleNotes.find((n) => n.blockKey === blockKey)
+          if (existing) {
+            return { scheduleNotes: s.scheduleNotes.map((n) => n.blockKey === blockKey ? { ...n, note } : n) }
+          }
+          return { scheduleNotes: [...s.scheduleNotes, { blockKey, note }] }
+        }),
     }),
-    { name: 'dayflow-v1' }
+    { name: 'dayflow-v2' }
   )
 )

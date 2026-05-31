@@ -8,45 +8,48 @@ import { CalendarView } from './components/CalendarView'
 import { MealPrep } from './components/MealPrep'
 import { Reminders } from './components/Reminders'
 import { Motivation } from './components/Motivation'
+import { AddPlanModal } from './components/AddPlanModal'
 import {
   LayoutDashboard, Clock, Flame, Target, Calendar,
-  UtensilsCrossed, Bell, Star, X
+  UtensilsCrossed, Bell, Star, X, Plus
 } from 'lucide-react'
 
 type Tab = 'dashboard' | 'schedule' | 'habits' | 'goals' | 'calendar' | 'prep' | 'reminders' | 'motivation'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'dashboard', label: 'Дашборд', icon: <LayoutDashboard size={20} /> },
-  { id: 'schedule', label: 'День', icon: <Clock size={20} /> },
-  { id: 'habits', label: 'Привычки', icon: <Flame size={20} /> },
-  { id: 'goals', label: 'Цели', icon: <Target size={20} /> },
-  { id: 'calendar', label: 'Календарь', icon: <Calendar size={20} /> },
-  { id: 'prep', label: 'Заготовки', icon: <UtensilsCrossed size={20} /> },
-  { id: 'reminders', label: 'Напоминания', icon: <Bell size={20} /> },
-  { id: 'motivation', label: 'Мотивация', icon: <Star size={20} /> },
+  { id: 'dashboard',  label: 'Дашборд',    icon: <LayoutDashboard size={20} /> },
+  { id: 'schedule',   label: 'День',        icon: <Clock size={20} /> },
+  { id: 'habits',     label: 'Привычки',    icon: <Flame size={20} /> },
+  { id: 'goals',      label: 'Цели',        icon: <Target size={20} /> },
+  { id: 'calendar',   label: 'Календарь',   icon: <Calendar size={20} /> },
+  { id: 'prep',       label: 'Заготовки',   icon: <UtensilsCrossed size={20} /> },
+  { id: 'reminders',  label: 'Напоминания', icon: <Bell size={20} /> },
+  { id: 'motivation', label: 'Мотивация',   icon: <Star size={20} /> },
 ]
 
 const TAB_COLORS: Record<Tab, string> = {
-  dashboard: '#6366f1',
-  schedule: '#3b82f6',
-  habits: '#f97316',
-  goals: '#8b5cf6',
-  calendar: '#06b6d4',
-  prep: '#22c55e',
-  reminders: '#ec4899',
+  dashboard:  '#6366f1',
+  schedule:   '#3b82f6',
+  habits:     '#f97316',
+  goals:      '#8b5cf6',
+  calendar:   '#06b6d4',
+  prep:       '#22c55e',
+  reminders:  '#ec4899',
   motivation: '#f59e0b',
 }
 
+const VALID_TABS = TABS.map(t => t.id)
+
 export default function App() {
-  const validTabs: Tab[] = ['dashboard', 'schedule', 'habits', 'goals', 'calendar', 'prep', 'reminders', 'motivation']
   const hashTab = window.location.hash.slice(1) as Tab
-  const [tab, setTab] = useState<Tab>(validTabs.includes(hashTab) ? hashTab : 'dashboard')
+  const [tab, setTab] = useState<Tab>(VALID_TABS.includes(hashTab) ? hashTab : 'dashboard')
+  const [showAddPlan, setShowAddPlan] = useState(false)
+  const { activeReminder, dismissReminder, reminders } = useStore()
 
   const navigate = (t: Tab) => {
     setTab(t)
     window.location.hash = t
   }
-  const { activeReminder, dismissReminder, reminders } = useStore()
 
   useEffect(() => {
     const check = () => {
@@ -54,13 +57,12 @@ export default function App() {
       const hhmm = now.toTimeString().slice(0, 5)
       const dow = now.getDay()
       const dayMap: Record<number, string> = { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat' }
-      const dayStr = dayMap[dow]
       const r = reminders.find(r => {
         if (!r.enabled || r.time !== hhmm) return false
         if (r.days === 'daily') return true
         if (r.days === 'weekdays') return dow >= 1 && dow <= 5
         if (r.days === 'weekends') return dow === 0 || dow === 6
-        return r.days.split(',').includes(dayStr)
+        return r.days.split(',').includes(dayMap[dow])
       })
       if (r) useStore.getState().triggerReminder(r)
     }
@@ -68,41 +70,51 @@ export default function App() {
     return () => clearInterval(iv)
   }, [reminders])
 
-  const currentColor = TAB_COLORS[tab]
+  const color = TAB_COLORS[tab]
 
   return (
-    <div className="min-h-screen" style={{ background: '#f5f5f7' }}>
+    <div style={{ minHeight: '100vh', background: '#f5f5f7' }}>
       {/* Header */}
-      <header className="sticky top-0 z-30" style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #e5e7eb' }}>
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 30,
+        background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(16px)',
+        borderBottom: '1px solid #e5e7eb',
+      }}>
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 10, background: currentColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold', fontSize: 14 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 11, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 15, transition: 'background 0.3s' }}>
               D
             </div>
             <div>
-              <p style={{ fontWeight: 700, fontSize: 14, margin: 0 }}>DayFlow</p>
+              <p style={{ fontWeight: 700, fontSize: 15, margin: 0, lineHeight: 1.2 }}>DayFlow</p>
               <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>
                 {new Date().toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
             </div>
           </div>
-          <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>
-            {new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500 }}>
+              {new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+            {/* Quick add button in header */}
+            <button onClick={() => setShowAddPlan(true)}
+              style={{ width: 32, height: 32, borderRadius: 10, background: color + '18', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color, transition: 'background 0.3s' }}>
+              <Plus size={18} />
+            </button>
+          </div>
         </div>
       </header>
 
       {/* Reminder banner */}
       {activeReminder && (
-        <div style={{ position: 'fixed', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 50, width: 'calc(100% - 32px)', maxWidth: 380 }}>
-          <div style={{ background: 'white', borderRadius: 16, boxShadow: '0 10px 40px rgba(0,0,0,0.15)', border: '1px solid #e5e7eb', padding: 16, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: currentColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+        <div style={{ position: 'fixed', top: 68, left: '50%', transform: 'translateX(-50%)', zIndex: 50, width: 'calc(100% - 32px)', maxWidth: 380 }}>
+          <div style={{ background: 'white', borderRadius: 18, boxShadow: '0 8px 32px rgba(0,0,0,0.14)', border: '1px solid #e5e7eb', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
               <Bell size={18} />
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ fontWeight: 600, fontSize: 14, margin: '0 0 2px' }}>Напоминание</p>
-              <p style={{ fontSize: 14, color: '#4b5563', margin: '0 0 2px' }}>{activeReminder.title}</p>
-              <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>{activeReminder.time}</p>
+              <p style={{ fontSize: 13, color: '#4b5563', margin: 0 }}>{activeReminder.title} · {activeReminder.time}</p>
             </div>
             <button onClick={dismissReminder} style={{ color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer' }}>
               <X size={16} />
@@ -111,54 +123,66 @@ export default function App() {
         </div>
       )}
 
-      {/* Desktop sidebar */}
-      <div style={{ display: 'none' }} className="lg-sidebar">
-        {/* shown via CSS below */}
-      </div>
-
-      {/* Main */}
-      <main style={{ maxWidth: 520, margin: '0 auto', padding: '16px 16px 100px' }}>
-        {tab === 'dashboard' && <Dashboard />}
-        {tab === 'schedule' && <Schedule />}
-        {tab === 'habits' && <Habits />}
-        {tab === 'goals' && <Goals />}
-        {tab === 'calendar' && <CalendarView />}
-        {tab === 'prep' && <MealPrep />}
-        {tab === 'reminders' && <Reminders />}
+      {/* Main content */}
+      <main style={{ maxWidth: 520, margin: '0 auto', padding: '16px 16px 110px' }}>
+        {tab === 'dashboard'  && <Dashboard onNavigate={navigate} />}
+        {tab === 'schedule'   && <Schedule onAddPlan={() => setShowAddPlan(true)} />}
+        {tab === 'habits'     && <Habits />}
+        {tab === 'goals'      && <Goals />}
+        {tab === 'calendar'   && <CalendarView />}
+        {tab === 'prep'       && <MealPrep />}
+        {tab === 'reminders'  && <Reminders />}
         {tab === 'motivation' && <Motivation />}
       </main>
+
+      {/* Floating Add button (всегда видна) */}
+      <button
+        onClick={() => setShowAddPlan(true)}
+        style={{
+          position: 'fixed', bottom: 86, right: 20, zIndex: 25,
+          width: 52, height: 52, borderRadius: 16,
+          background: color, border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'white', boxShadow: `0 4px 20px ${color}60`,
+          transition: 'all 0.3s',
+        }}
+        title="Добавить план на сегодня"
+      >
+        <Plus size={24} />
+      </button>
 
       {/* Bottom nav */}
       <nav style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 30,
-        background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(12px)',
+        background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(16px)',
         borderTop: '1px solid #e5e7eb',
         display: 'flex', overflowX: 'auto',
       }}>
         {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => navigate(t.id)}
+          <button key={t.id} onClick={() => navigate(t.id)}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-              padding: '8px 12px', flexShrink: 0, border: 'none',
+              padding: '8px 10px', flexShrink: 0, border: 'none',
               background: 'none', cursor: 'pointer',
               color: tab === t.id ? TAB_COLORS[t.id] : '#9ca3af',
-              minWidth: 56,
-            }}
-          >
+              minWidth: 52, flex: 1,
+              transition: 'color 0.2s',
+            }}>
             <div style={{
-              width: 32, height: 32, borderRadius: 10,
-              background: tab === t.id ? TAB_COLORS[t.id] + '20' : 'transparent',
+              width: 34, height: 34, borderRadius: 11,
+              background: tab === t.id ? TAB_COLORS[t.id] + '18' : 'transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.2s',
+              transition: 'background 0.2s',
             }}>
               {t.icon}
             </div>
-            <span style={{ fontSize: 10, fontWeight: 500 }}>{t.label}</span>
+            <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.2 }}>{t.label}</span>
           </button>
         ))}
       </nav>
+
+      {/* Add Plan Modal */}
+      {showAddPlan && <AddPlanModal onClose={() => setShowAddPlan(false)} />}
     </div>
   )
 }
