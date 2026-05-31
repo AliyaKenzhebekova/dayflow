@@ -38,7 +38,14 @@ const TAB_COLORS: Record<Tab, string> = {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('dashboard')
+  const validTabs: Tab[] = ['dashboard', 'schedule', 'habits', 'goals', 'calendar', 'prep', 'reminders', 'motivation']
+  const hashTab = window.location.hash.slice(1) as Tab
+  const [tab, setTab] = useState<Tab>(validTabs.includes(hashTab) ? hashTab : 'dashboard')
+
+  const navigate = (t: Tab) => {
+    setTab(t)
+    window.location.hash = t
+  }
   const { activeReminder, dismissReminder, reminders } = useStore()
 
   useEffect(() => {
@@ -131,7 +138,7 @@ export default function App() {
         {TABS.map(t => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => navigate(t.id)}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
               padding: '8px 12px', flexShrink: 0, border: 'none',
