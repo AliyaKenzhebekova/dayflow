@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { useStore, type GoalCategory } from '../store'
+import { useStore, type GoalCategory, type Goal } from '../store'
 import { daysLeft, goalCategoryColors, goalCategoryLabels } from '../utils'
-import { Plus, Trash2, Target } from 'lucide-react'
+import { Plus, Trash2, Target, Pencil } from 'lucide-react'
+import { EditModal } from './EditModal'
 
 export function Goals() {
-  const { goals, updateGoalProgress, addGoal, deleteGoal } = useStore()
+  const { goals, updateGoalProgress, addGoal, updateGoal, deleteGoal } = useStore()
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<string | null>(null)
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [customVal, setCustomVal] = useState('')
   const [form, setForm] = useState({
     name: '',
@@ -108,9 +110,12 @@ export function Goals() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <span className="text-lg font-bold" style={{ color }}>{g.progress}%</span>
-                  <button onClick={() => deleteGoal(g.id)} className="text-gray-200 hover:text-red-400 transition-colors ml-1">
+                  <button onClick={() => setEditingGoal(g)} className="text-gray-300 hover:text-blue-400 transition-colors">
+                    <Pencil size={14} />
+                  </button>
+                  <button onClick={() => deleteGoal(g.id)} className="text-gray-200 hover:text-red-400 transition-colors">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -174,6 +179,32 @@ export function Goals() {
           )
         })}
       </div>
+
+      {editingGoal && (
+        <EditModal
+          title="Редактировать цель"
+          accentColor="#8b5cf6"
+          fields={[
+            { key: 'name', label: 'Название цели', type: 'text' },
+            { key: 'category', label: 'Категория', type: 'select', options: [
+              { value: 'education', label: 'Образование' },
+              { value: 'health', label: 'Здоровье' },
+              { value: 'finance', label: 'Финансы' },
+              { value: 'personal', label: 'Личное' },
+            ]},
+            { key: 'daysTotal', label: 'Срок (дней)', type: 'number' },
+            { key: 'progress', label: 'Текущий прогресс (%)', type: 'number' },
+          ]}
+          values={{ name: editingGoal.name, category: editingGoal.category, daysTotal: editingGoal.daysTotal, progress: editingGoal.progress }}
+          onSave={(v) => updateGoal(editingGoal.id, {
+            name: String(v.name),
+            category: v.category as GoalCategory,
+            daysTotal: Number(v.daysTotal),
+            progress: Math.min(100, Math.max(0, Number(v.progress))),
+          })}
+          onClose={() => setEditingGoal(null)}
+        />
+      )}
     </div>
   )
 }

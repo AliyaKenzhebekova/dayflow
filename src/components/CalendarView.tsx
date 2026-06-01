@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useStore, type TaskCategory } from '../store'
+import { useStore, type TaskCategory, type CalendarTask } from '../store'
 import { categoryColors, categoryLabels } from '../utils'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Pencil } from 'lucide-react'
+import { EditModal } from './EditModal'
 
 export function CalendarView() {
-  const { calendarTasks, addCalendarTask, toggleCalendarTask, deleteCalendarTask } = useStore()
+  const { calendarTasks, addCalendarTask, toggleCalendarTask, updateCalendarTask, deleteCalendarTask } = useStore()
+  const [editingTask, setEditingTask] = useState<CalendarTask | null>(null)
   const [current, setCurrent] = useState(new Date())
   const [selected, setSelected] = useState<string | null>(new Date().toISOString().slice(0, 10))
   const [showAdd, setShowAdd] = useState(false)
@@ -157,6 +159,9 @@ export function CalendarView() {
                   <p className={`text-sm font-medium ${task.done ? 'line-through text-gray-400' : ''}`}>{task.title}</p>
                   {task.time && <p className="text-xs text-gray-400">{task.time} · {categoryLabels[task.category]}</p>}
                 </div>
+                <button onClick={() => setEditingTask(task)} className="text-gray-200 hover:text-blue-400">
+                  <Pencil size={14} />
+                </button>
                 <button onClick={() => deleteCalendarTask(task.id)} className="text-gray-200 hover:text-red-400">
                   <Trash2 size={14} />
                 </button>
@@ -164,6 +169,20 @@ export function CalendarView() {
             ))
           )}
         </div>
+      )}
+      {editingTask && (
+        <EditModal
+          title="Редактировать задачу"
+          accentColor="#06b6d4"
+          fields={[
+            { key: 'title', label: 'Название', type: 'text' },
+            { key: 'time', label: 'Время', type: 'time' },
+            { key: 'category', label: 'Категория', type: 'select', options: Object.entries(categoryLabels).map(([v, l]) => ({ value: v, label: l })) },
+          ]}
+          values={{ title: editingTask.title, time: editingTask.time || '', category: editingTask.category }}
+          onSave={(v) => updateCalendarTask(editingTask.id, { title: String(v.title), time: String(v.time), category: v.category as TaskCategory })}
+          onClose={() => setEditingTask(null)}
+        />
       )}
     </div>
   )

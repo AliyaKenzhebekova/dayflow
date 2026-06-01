@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useStore } from '../store'
-import { Plus, RotateCcw, UtensilsCrossed } from 'lucide-react'
+import { useStore, type PrepItem } from '../store'
+import { Plus, RotateCcw, UtensilsCrossed, Pencil } from 'lucide-react'
+import { EditModal } from './EditModal'
 
 export function MealPrep() {
-  const { prepItems, togglePrepItem, addPrepItem, resetPrep } = useStore()
+  const { prepItems, togglePrepItem, addPrepItem, updatePrepItem, resetPrep } = useStore()
   const [showAdd, setShowAdd] = useState(false)
+  const [editingItem, setEditingItem] = useState<PrepItem | null>(null)
   const [form, setForm] = useState({ name: '', portions: '4' })
   const done = prepItems.filter(p => p.done).length
   const pct = Math.round((done / Math.max(1, prepItems.length)) * 100)
@@ -92,6 +94,12 @@ export function MealPrep() {
               <p className={`text-sm font-medium ${item.done ? 'line-through text-gray-400' : ''}`}>{item.name}</p>
               <p className="text-xs text-gray-400">{item.portions} порций</p>
             </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); setEditingItem(item) }}
+              className="text-gray-300 hover:text-blue-400 transition-colors flex-shrink-0"
+            >
+              <Pencil size={14} />
+            </button>
           </div>
         ))}
       </div>
@@ -102,6 +110,20 @@ export function MealPrep() {
       >
         <RotateCcw size={14} /> Сбросить все отметки
       </button>
+
+      {editingItem && (
+        <EditModal
+          title="Редактировать блюдо"
+          accentColor="#22c55e"
+          fields={[
+            { key: 'name', label: 'Название блюда', type: 'text' },
+            { key: 'portions', label: 'Количество порций', type: 'number' },
+          ]}
+          values={{ name: editingItem.name, portions: editingItem.portions }}
+          onSave={(v) => updatePrepItem(editingItem.id, String(v.name), Number(v.portions))}
+          onClose={() => setEditingItem(null)}
+        />
+      )}
     </div>
   )
 }

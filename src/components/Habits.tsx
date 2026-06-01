@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useStore, type HabitFreq } from '../store'
+import { useStore, type HabitFreq, type Habit } from '../store'
 import { TODAY, streakCount, isHabitScheduledToday, last7Days } from '../utils'
-import { Plus, Trash2, Flame } from 'lucide-react'
+import { Plus, Trash2, Flame, Pencil } from 'lucide-react'
+import { EditModal } from './EditModal'
 
 const FREQ_LABELS: Record<HabitFreq, string> = {
   daily: 'Ежедневно',
@@ -12,10 +13,11 @@ const FREQ_LABELS: Record<HabitFreq, string> = {
 
 
 export function Habits() {
-  const { habits, toggleHabit, addHabit, deleteHabit } = useStore()
+  const { habits, toggleHabit, addHabit, updateHabit, deleteHabit } = useStore()
   const today = TODAY()
   const days7 = last7Days()
   const [showAdd, setShowAdd] = useState(false)
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null)
   const [form, setForm] = useState({ name: '', duration: '30', time: '07:00', freq: 'daily' as HabitFreq })
 
   const scheduled = habits.filter(isHabitScheduledToday)
@@ -91,7 +93,7 @@ export function Habits() {
         <section>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">На сегодня</p>
           <div className="space-y-2">
-            {scheduled.map((h) => <HabitCard key={h.id} habit={h} today={today} days7={days7} onToggle={() => toggleHabit(h.id, today)} onDelete={() => deleteHabit(h.id)} />)}
+            {scheduled.map((h) => <HabitCard key={h.id} habit={h} today={today} days7={days7} onToggle={() => toggleHabit(h.id, today)} onDelete={() => deleteHabit(h.id)} onEdit={() => setEditingHabit(h)} />)}
           </div>
         </section>
       )}
@@ -100,20 +102,40 @@ export function Habits() {
         <section>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Другие дни</p>
           <div className="space-y-2">
-            {other.map((h) => <HabitCard key={h.id} habit={h} today={today} days7={days7} onToggle={() => toggleHabit(h.id, today)} onDelete={() => deleteHabit(h.id)} />)}
+            {other.map((h) => <HabitCard key={h.id} habit={h} today={today} days7={days7} onToggle={() => toggleHabit(h.id, today)} onDelete={() => deleteHabit(h.id)} onEdit={() => setEditingHabit(h)} />)}
           </div>
         </section>
+      )}
+      {editingHabit && (
+        <EditModal
+          title="Редактировать привычку"
+          accentColor="#f97316"
+          fields={[
+            { key: 'name', label: 'Название', type: 'text', placeholder: 'Медитация ходьбой' },
+            { key: 'time', label: 'Время', type: 'time' },
+            { key: 'duration', label: 'Длительность (мин)', type: 'number' },
+            { key: 'freq', label: 'Частота', type: 'select', options: [
+              { value: 'daily', label: 'Ежедневно' },
+              { value: 'weekdays', label: 'По будням' },
+              { value: 'weekends', label: 'По выходным' },
+            ]},
+          ]}
+          values={{ name: editingHabit.name, time: editingHabit.time, duration: editingHabit.duration, freq: editingHabit.freq }}
+          onSave={(v) => updateHabit(editingHabit.id, { name: String(v.name), time: String(v.time), duration: Number(v.duration), freq: v.freq as HabitFreq })}
+          onClose={() => setEditingHabit(null)}
+        />
       )}
     </div>
   )
 }
 
-function HabitCard({ habit, today, days7, onToggle, onDelete }: {
+function HabitCard({ habit, today, days7, onToggle, onDelete, onEdit }: {
   habit: import('../store').Habit
   today: string
   days7: string[]
   onToggle: () => void
   onDelete: () => void
+  onEdit: () => void
 }) {
   const done = habit.completedDates.includes(today)
   const streak = streakCount(habit.completedDates)
@@ -143,8 +165,11 @@ function HabitCard({ habit, today, days7, onToggle, onDelete }: {
           </div>
           <p className="text-xs text-gray-400">{habit.time} · {habit.duration} мин · {FREQ_LABELS[habit.freq]}</p>
         </div>
+        <button onClick={onEdit} className="text-gray-300 hover:text-blue-400 transition-colors">
+          <Pencil size={15} />
+        </button>
         <button onClick={onDelete} className="text-gray-300 hover:text-red-400 transition-colors">
-          <Trash2 size={16} />
+          <Trash2 size={15} />
         </button>
       </div>
 

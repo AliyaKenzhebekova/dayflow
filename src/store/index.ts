@@ -161,21 +161,25 @@ interface AppState {
   // Habits
   toggleHabit: (id: string, date: string) => void
   addHabit: (h: Omit<Habit, 'id' | 'completedDates'>) => void
+  updateHabit: (id: string, patch: Partial<Omit<Habit, 'id' | 'completedDates'>>) => void
   deleteHabit: (id: string) => void
 
   // Goals
   updateGoalProgress: (id: string, delta: number) => void
   addGoal: (g: Omit<Goal, 'id'>) => void
+  updateGoal: (id: string, patch: Partial<Omit<Goal, 'id'>>) => void
   deleteGoal: (id: string) => void
 
   // Calendar
   addCalendarTask: (t: Omit<CalendarTask, 'id'>) => void
   toggleCalendarTask: (id: string) => void
+  updateCalendarTask: (id: string, patch: Partial<Omit<CalendarTask, 'id'>>) => void
   deleteCalendarTask: (id: string) => void
 
   // Prep
   togglePrepItem: (id: string) => void
   addPrepItem: (name: string, portions: number) => void
+  updatePrepItem: (id: string, name: string, portions: number) => void
   resetPrep: () => void
 
   // Reminders
@@ -188,6 +192,7 @@ interface AppState {
 
   // Custom day blocks
   addCustomBlock: (b: Omit<CustomBlock, 'id'>) => void
+  updateCustomBlock: (id: string, patch: Partial<Omit<CustomBlock, 'id'>>) => void
   toggleCustomBlock: (id: string) => void
   deleteCustomBlock: (id: string) => void
 
@@ -222,6 +227,7 @@ export const useStore = create<AppState>()(
         })),
 
       addHabit: (h) => set((s) => ({ habits: [...s.habits, { ...h, id: uid(), completedDates: [] }] })),
+      updateHabit: (id, patch) => set((s) => ({ habits: s.habits.map((h) => h.id === id ? { ...h, ...patch } : h) })),
       deleteHabit: (id) => set((s) => ({ habits: s.habits.filter((h) => h.id !== id) })),
 
       updateGoalProgress: (id, delta) =>
@@ -230,17 +236,22 @@ export const useStore = create<AppState>()(
         })),
 
       addGoal: (g) => set((s) => ({ goals: [...s.goals, { ...g, id: uid() }] })),
+      updateGoal: (id, patch) => set((s) => ({ goals: s.goals.map((g) => g.id === id ? { ...g, ...patch } : g) })),
       deleteGoal: (id) => set((s) => ({ goals: s.goals.filter((g) => g.id !== id) })),
 
       addCalendarTask: (t) => set((s) => ({ calendarTasks: [...s.calendarTasks, { ...t, id: uid() }] })),
       toggleCalendarTask: (id) =>
         set((s) => ({ calendarTasks: s.calendarTasks.map((t) => t.id === id ? { ...t, done: !t.done } : t) })),
+      updateCalendarTask: (id, patch) =>
+        set((s) => ({ calendarTasks: s.calendarTasks.map((t) => t.id === id ? { ...t, ...patch } : t) })),
       deleteCalendarTask: (id) => set((s) => ({ calendarTasks: s.calendarTasks.filter((t) => t.id !== id) })),
 
       togglePrepItem: (id) =>
         set((s) => ({ prepItems: s.prepItems.map((p) => p.id === id ? { ...p, done: !p.done } : p) })),
       addPrepItem: (name, portions) =>
         set((s) => ({ prepItems: [...s.prepItems, { id: uid(), name, portions, done: false }] })),
+      updatePrepItem: (id, name, portions) =>
+        set((s) => ({ prepItems: s.prepItems.map((p) => p.id === id ? { ...p, name, portions } : p) })),
       resetPrep: () => set((s) => ({ prepItems: s.prepItems.map((p) => ({ ...p, done: false })) })),
 
       toggleReminder: (id) =>
@@ -254,6 +265,8 @@ export const useStore = create<AppState>()(
         })),
 
       addCustomBlock: (b) => set((s) => ({ customBlocks: [...s.customBlocks, { ...b, id: uid() }] })),
+      updateCustomBlock: (id, patch) =>
+        set((s) => ({ customBlocks: s.customBlocks.map((b) => b.id === id ? { ...b, ...patch } : b) })),
       toggleCustomBlock: (id) =>
         set((s) => ({ customBlocks: s.customBlocks.map((b) => b.id === id ? { ...b, done: !b.done } : b) })),
       deleteCustomBlock: (id) => set((s) => ({ customBlocks: s.customBlocks.filter((b) => b.id !== id) })),

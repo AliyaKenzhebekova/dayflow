@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore, type ScheduleType, type CustomBlock } from '../store'
-import { Plus, Trash2, CheckCircle2, Circle, ChevronDown, ChevronUp, StickyNote } from 'lucide-react'
+import { Plus, Trash2, CheckCircle2, Circle, ChevronDown, ChevronUp, StickyNote, Pencil } from 'lucide-react'
+import { EditModal } from './EditModal'
 
 const WEEKDAY_SCHEDULE = [
   { time: '06:30', label: 'Подъём, стакан воды', type: 'rest' as ScheduleType, detail: 'Начни день со стакана воды. Открой шторы, впусти свет — это перезапускает биоритмы.' },
@@ -58,13 +59,14 @@ const TYPE_EMOJIS: Record<ScheduleType, string> = {
 }
 
 export function Schedule({ onAddPlan }: { onAddPlan?: () => void }) {
-  const { customBlocks, toggleCustomBlock, deleteCustomBlock, scheduleNotes, setScheduleNote } = useStore()
+  const { customBlocks, toggleCustomBlock, updateCustomBlock, deleteCustomBlock, scheduleNotes, setScheduleNote } = useStore()
   const dow = new Date().getDay()
   const today = new Date().toISOString().slice(0, 10)
   const [view, setView] = useState<'weekday' | 'sunday'>(dow === 0 ? 'sunday' : 'weekday')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [editingNote, setEditingNote] = useState<string | null>(null)
   const [noteText, setNoteText] = useState('')
+  const [editingBlock, setEditingBlock] = useState<CustomBlock | null>(null)
 
   const schedule = view === 'sunday' ? SUNDAY_SCHEDULE : WEEKDAY_SCHEDULE
   const nowTime = new Date().toTimeString().slice(0, 5)
@@ -229,12 +231,18 @@ export function Schedule({ onAddPlan }: { onAddPlan?: () => void }) {
                         )}
                       </div>
 
-                      {/* Delete custom */}
+                      {/* Edit / Delete custom */}
                       {item.isCustom && (
-                        <button onClick={(e) => { e.stopPropagation(); deleteCustomBlock(item.id) }}
-                          className="mt-2.5 flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors">
-                          <Trash2 size={11} /> Удалить этот план
-                        </button>
+                        <div className="flex gap-3 mt-2.5">
+                          <button onClick={(e) => { e.stopPropagation(); setEditingBlock(customBlocks.find(b => b.id === item.id) || null) }}
+                            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-600 transition-colors">
+                            <Pencil size={11} /> Изменить
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); deleteCustomBlock(item.id) }}
+                            className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 transition-colors">
+                            <Trash2 size={11} /> Удалить
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -244,6 +252,29 @@ export function Schedule({ onAddPlan }: { onAddPlan?: () => void }) {
           )
         })}
       </div>
+
+      {/* Edit custom block modal */}
+      {editingBlock && (
+        <EditModal
+          title="Изменить план"
+          accentColor="#f59e0b"
+          fields={[
+            { key: 'label', label: 'Что планируешь?', type: 'text' },
+            { key: 'time', label: 'Время', type: 'time' },
+            { key: 'type', label: 'Категория', type: 'select', options: [
+              { value: 'work', label: '💼 Работа' }, { value: 'personal', label: '💜 Личное' },
+              { value: 'health', label: '💚 Здоровье' }, { value: 'kids', label: '👧 Дети' },
+              { value: 'family', label: '❤️ Семья' }, { value: 'study', label: '📚 Учёба' },
+              { value: 'goals', label: '🎯 Цели' }, { value: 'food', label: '🍱 Еда' },
+              { value: 'rest', label: '😴 Отдых' },
+            ]},
+            { key: 'note', label: 'Заметка', type: 'textarea', placeholder: 'Детали...' },
+          ]}
+          values={{ label: editingBlock.label, time: editingBlock.time, type: editingBlock.type, note: editingBlock.note || '' }}
+          onSave={(v) => updateCustomBlock(editingBlock.id, { label: String(v.label), time: String(v.time), type: v.type as ScheduleType, note: String(v.note) })}
+          onClose={() => setEditingBlock(null)}
+        />
+      )}
 
       {/* Add plan CTA */}
       <button onClick={onAddPlan}
