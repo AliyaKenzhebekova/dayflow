@@ -73,8 +73,23 @@ export interface CustomBlock {
 }
 
 export interface ScheduleNote {
-  blockKey: string // e.g. "06:40-weekday"
+  blockKey: string
   note: string
+}
+
+export type BookStatus = 'want' | 'reading' | 'done'
+export type BookGenre = 'motivational' | 'fiction'
+
+export interface Book {
+  id: string
+  title: string
+  author: string
+  genre: BookGenre
+  status: BookStatus
+  pages?: number
+  pagesRead?: number
+  note?: string
+  addedDate: string
 }
 
 // ── Initial Data ───────────────────────────────────────────────────────────
@@ -145,6 +160,31 @@ const initAchievements: Achievement[] = [
   { id: 'a3', title: 'Заготовки выполнены полностью', date: d(8), icon: '🍱' },
 ]
 
+const initBooks: Book[] = [
+  // Мотивационные
+  { id: 'b1', title: 'Атомные привычки', author: 'Джеймс Клир', genre: 'motivational', status: 'reading', pages: 320, pagesRead: 80, note: 'Про систему маленьких улучшений', addedDate: d(10) },
+  { id: 'b2', title: 'Магия утра', author: 'Хэл Элрод', genre: 'motivational', status: 'want', pages: 224, addedDate: d(5) },
+  { id: 'b3', title: '7 навыков высокоэффективных людей', author: 'Стивен Кови', genre: 'motivational', status: 'want', pages: 396, addedDate: d(4) },
+  { id: 'b4', title: 'Mindset. Новая психология успеха', author: 'Кэрол Дуэк', genre: 'motivational', status: 'want', pages: 320, addedDate: d(3) },
+  { id: 'b5', title: 'Эссенциализм', author: 'Грег МакКеон', genre: 'motivational', status: 'want', pages: 288, addedDate: d(2) },
+  { id: 'b6', title: 'Поток', author: 'Михай Чиксентмихайи', genre: 'motivational', status: 'want', pages: 464, addedDate: d(1) },
+  { id: 'b7', title: 'Сила настоящего', author: 'Экхарт Толле', genre: 'motivational', status: 'done', pages: 224, pagesRead: 224, addedDate: d(30) },
+  { id: 'b8', title: 'Думай медленно... решай быстро', author: 'Даниэль Канеман', genre: 'motivational', status: 'want', pages: 512, addedDate: d(1) },
+  { id: 'b9', title: '100M$ Offers', author: 'Алекс Хормози', genre: 'motivational', status: 'want', pages: 252, addedDate: d(1) },
+  { id: 'b10', title: 'Не давай скидок!', author: 'Илья Кусакин', genre: 'motivational', status: 'want', pages: 180, addedDate: d(1) },
+  // Художественные
+  { id: 'b11', title: 'Маленькие женщины', author: 'Луиза Мэй Олкотт', genre: 'fiction', status: 'done', pages: 520, pagesRead: 520, addedDate: d(60) },
+  { id: 'b12', title: 'Унесённые ветром', author: 'Маргарет Митчелл', genre: 'fiction', status: 'want', pages: 1024, addedDate: d(7) },
+  { id: 'b13', title: 'Нормальные люди', author: 'Салли Руни', genre: 'fiction', status: 'want', pages: 288, addedDate: d(5) },
+  { id: 'b14', title: 'Тысяча сияющих солнц', author: 'Халед Хоссейни', genre: 'fiction', status: 'want', pages: 372, addedDate: d(4) },
+  { id: 'b15', title: 'Над пропастью во ржи', author: 'Джером Сэлинджер', genre: 'fiction', status: 'done', pages: 254, pagesRead: 254, addedDate: d(90) },
+  { id: 'b16', title: 'Мастер и Маргарита', author: 'Михаил Булгаков', genre: 'fiction', status: 'want', pages: 480, addedDate: d(3) },
+  { id: 'b17', title: 'Евгений Онегин', author: 'Александр Пушкин', genre: 'fiction', status: 'want', pages: 224, addedDate: d(2) },
+  { id: 'b18', title: 'Гордость и предубеждение', author: 'Джейн Остин', genre: 'fiction', status: 'want', pages: 432, addedDate: d(1) },
+  { id: 'b19', title: 'Маленький принц', author: 'Антуан де Сент-Экзюпери', genre: 'fiction', status: 'done', pages: 96, pagesRead: 96, addedDate: d(120) },
+  { id: 'b20', title: 'Три сестры', author: 'Антон Чехов', genre: 'fiction', status: 'want', pages: 96, addedDate: d(1) },
+]
+
 // ── Store ──────────────────────────────────────────────────────────────────
 
 interface AppState {
@@ -157,6 +197,7 @@ interface AppState {
   activeReminder: Reminder | null
   customBlocks: CustomBlock[]
   scheduleNotes: ScheduleNote[]
+  books: Book[]
 
   // Habits
   toggleHabit: (id: string, date: string) => void
@@ -198,6 +239,13 @@ interface AppState {
 
   // Schedule notes
   setScheduleNote: (blockKey: string, note: string) => void
+
+  // Books
+  addBook: (b: Omit<Book, 'id' | 'addedDate'>) => void
+  updateBook: (id: string, patch: Partial<Omit<Book, 'id'>>) => void
+  setBookStatus: (id: string, status: BookStatus) => void
+  setBookPages: (id: string, pagesRead: number) => void
+  deleteBook: (id: string) => void
 }
 
 function uid() {
@@ -215,6 +263,7 @@ export const useStore = create<AppState>()(
       achievements: initAchievements,
       activeReminder: null,
       customBlocks: [],
+      books: initBooks,
       scheduleNotes: [],
 
       toggleHabit: (id, date) =>
@@ -279,7 +328,21 @@ export const useStore = create<AppState>()(
           }
           return { scheduleNotes: [...s.scheduleNotes, { blockKey, note }] }
         }),
+
+      addBook: (b) =>
+        set((s) => ({ books: [...s.books, { ...b, id: uid(), addedDate: new Date().toISOString().slice(0, 10) }] })),
+      updateBook: (id, patch) =>
+        set((s) => ({ books: s.books.map((b) => b.id === id ? { ...b, ...patch } : b) })),
+      setBookStatus: (id, status) =>
+        set((s) => ({ books: s.books.map((b) => b.id === id ? {
+          ...b, status,
+          pagesRead: status === 'done' ? (b.pages ?? b.pagesRead) : b.pagesRead,
+        } : b) })),
+      setBookPages: (id, pagesRead) =>
+        set((s) => ({ books: s.books.map((b) => b.id === id ? { ...b, pagesRead } : b) })),
+      deleteBook: (id) =>
+        set((s) => ({ books: s.books.filter((b) => b.id !== id) })),
     }),
-    { name: 'dayflow-v2' }
+    { name: 'dayflow-v3' }
   )
 )

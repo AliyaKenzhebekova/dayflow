@@ -8,13 +8,14 @@ import { CalendarView } from './components/CalendarView'
 import { MealPrep } from './components/MealPrep'
 import { Reminders } from './components/Reminders'
 import { Motivation } from './components/Motivation'
+import { Books } from './components/Books'
 import { AddPlanModal } from './components/AddPlanModal'
 import {
   LayoutDashboard, Clock, Flame, Target, Calendar,
-  UtensilsCrossed, Bell, Star, X, Plus
+  UtensilsCrossed, Bell, Star, X, Plus, BookOpen
 } from 'lucide-react'
 
-type Tab = 'dashboard' | 'schedule' | 'habits' | 'goals' | 'calendar' | 'prep' | 'reminders' | 'motivation'
+type Tab = 'dashboard' | 'schedule' | 'habits' | 'goals' | 'calendar' | 'prep' | 'reminders' | 'motivation' | 'books'
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard',  label: 'Дашборд',    icon: <LayoutDashboard size={20} /> },
@@ -25,6 +26,7 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: 'prep',       label: 'Заготовки',   icon: <UtensilsCrossed size={20} /> },
   { id: 'reminders',  label: 'Напоминания', icon: <Bell size={20} /> },
   { id: 'motivation', label: 'Мотивация',   icon: <Star size={20} /> },
+  { id: 'books',      label: 'Книги',        icon: <BookOpen size={20} /> },
 ]
 
 const TAB_COLORS: Record<Tab, string> = {
@@ -36,6 +38,7 @@ const TAB_COLORS: Record<Tab, string> = {
   prep:       '#22c55e',
   reminders:  '#ec4899',
   motivation: '#f59e0b',
+  books:      '#d97706',
 }
 
 const VALID_TABS = TABS.map(t => t.id)
@@ -133,6 +136,7 @@ export default function App() {
         {tab === 'prep'       && <MealPrep />}
         {tab === 'reminders'  && <Reminders />}
         {tab === 'motivation' && <Motivation />}
+        {tab === 'books'      && <Books />}
       </main>
 
       {/* Floating Add button (всегда видна) */}
